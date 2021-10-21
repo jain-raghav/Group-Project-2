@@ -4,3 +4,5 @@ Auto MPG Data Set - https://archive.ics.uci.edu/ml/datasets/Auto+MPG
 Forest Fires Data Set - https://archive.ics.uci.edu/ml/datasets/Forest+Fires
 Communities and Crime Data Set - https://archive.ics.uci.edu/ml/datasets/Communities+and+Crime
 Student Performance Data Set - https://archive.ics.uci.edu/ml/datasets/Student+Performance
+
+Churn dataset: https://www.kaggle.com/blastchar/telco-customer-churn
