@@ -14,31 +14,39 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Business Problem
 
-What business problem are you addressing? Remember - we take a very wide and broad view of what is "business". You should describe the context - who is your audience, what decision do they need to make, why is this problem significant/important?
+### What business problem are you addressing? Remember - we take a very wide and broad view of what is "business". You should describe the context - who is your audience, what decision do they need to make, why is this problem significant/important?
     
-    The business problem that we hope to address with our project is the cost of losing customers. Our target audience are telecom companies because we hope that our data can help them identify which customers are most likely to churn (in other words leave) their service. The decision that they need to make is which customers to offer promotions too, so by accuratly predicting which customers are most likely to leave, they can target only that customer type and hopefully retain the customer. This problem is significant because the telecom industry is extremely competitive and usually relies on customers staying with the company for an extended period of time for revenue and long term profitability. When a customer leaves their service, this is extremely harmful to the company because they lose a perpetual source of income and their infrastructure costs that they already spent money on remains constant regardless of whether there is one less customer using the service. 
+The business problem that we hope to address with our project is the cost of losing customers. Our target audience are telecom companies because we hope that our data can help them identify which customers are most likely to churn (in other words leave) their service. The decision that they need to make is which customers to offer promotions too, so by accuratly predicting which customers are most likely to leave, they can target only that customer type and hopefully retain the customer. This problem is significant because the telecom industry is extremely competitive and usually relies on customers staying with the company for an extended period of time for revenue and long term profitability. When a customer leaves their service, this harms the company because they lose a source of income and any infrastructure costs remain constant regardless of whether there is one less customer using the service. 
     
 
     
 
 ## Dataset
+```{r}
+data <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv", stringsAsFactors = TRUE)
+summary(data)
+```
 
-What dataset are you using? Include details - source of the data, size of the data, what is your response value, what are the predictors?
 
-    Source:
-    Size:
-    Response:
-    Predictors:
+### What dataset are you using? Include details - source of the data, size of the data, what is your response value, what are the predictors?
+
+Source: Kaggle
+    
+Size: 7043 rows (customers) and 21 columns (features)
+    
+Response: "Churn" column
+    
+Predictors: Information regarding: Services that each customer has signed up for (phone, multiple lines,           internet, online security, online backup, device protection, tech support, and streaming TV and movies),           Customer account information (how long they’ve been a customer, contract, payment method, paperless billing,       monthly charges, and total charges), and  Demographic info about customers (gender, age range, and if they have partners and dependents)
 
 ## Challenges
 
-Any challenges that are clear at this point - data cleaning issues, NA issues, data size issues, what else?
+### Any challenges that are clear at this point - data cleaning issues, NA issues, data size issues, what else?
     
-    
+Some irrelevant data such as customer ID should be omitted from the dataset as it has no bearing on whether a customer will churn or not. In addition, we notice from performing a quick read-and-summary that the column "TotalCharges" has 11 N/A values, which should likely not exist since all customers have data for monthly charges. This data could be replaced with a value equal to tenure*monthlyCharge, or perhaps it would be better to completely eliminate those rows due to the fact that there are very few rows with missing data out of the total 7043 rows.
 
 
 ## Why this project
 
-Lastly - but most importantly, why should the client spend money and resources to do this project?
+### Lastly - but most importantly, why should the client spend money and resources to do this project?
 
-    By predicting which customers are most likely to leave, we hope that the companies are able to target them with some kind of offer/promotion that incentivizes them to continue staying part of their service. Although offering a promotion cuts into the companies profit, it is a lot smaller in comparison to the amount that they would lose if they were to lose a customer. Therefore, by accurately predicting which customers are most likely to leave and making them stay, telecom companies would significantly increase their profits. One thing to note is that there is some potential downside to this in the case of a false positive because they would be offering a promotion to someone that wasn't actually going to leave causing the company to lose profit instead.
+By predicting which customers are most likely to leave, we hope that the companies are able to target them with some kind of offer/promotion that incentivizes them to continue staying part of their service. Although offering a promotion cuts into the companies profit, it is a lot smaller in comparison to the amount that they would lose if they were to lose a customer. Therefore, by accurately predicting which customers are most likely to leave and making them stay, telecom companies would significantly increase, or at least maintain, their profits. One thing to note is that there is some potential downside to this in the case of a false positive because they would be offering a promotion to someone that wasn't actually going to leave causing the company to lose profit instead.
