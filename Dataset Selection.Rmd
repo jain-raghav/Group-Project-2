@@ -1,0 +1,44 @@
+---
+title: "Dataset Selection"
+author: "Raghav, Malik, Himansu, Ari"
+date: "10/24/2021"
+output: 
+  prettydoc::html_pretty:
+    theme: leonids
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Business Problem
+
+What business problem are you addressing? Remember - we take a very wide and broad view of what is "business". You should describe the context - who is your audience, what decision do they need to make, why is this problem significant/important?
+    
+    The business problem that we hope to address with our project is the cost of losing customers. Our target audience are telecom companies because we hope that our data can help them identify which customers are most likely to churn (in other words leave) their service. The decision that they need to make is which customers to offer promotions too, so by accuratly predicting which customers are most likely to leave, they can target only that customer type and hopefully retain the customer. This problem is significant because the telecom industry is extremely competitive and usually relies on customers staying with the company for an extended period of time for revenue and long term profitability. When a customer leaves their service, this is extremely harmful to the company because they lose a perpetual source of income and their infrastructure costs that they already spent money on remains constant regardless of whether there is one less customer using the service. 
+    
+
+    
+
+## Dataset
+
+What dataset are you using? Include details - source of the data, size of the data, what is your response value, what are the predictors?
+
+    Source:
+    Size:
+    Response:
+    Predictors:
+
+## Challenges
+
+Any challenges that are clear at this point - data cleaning issues, NA issues, data size issues, what else?
+    
+    
+
+
+## Why this project
+
+Lastly - but most importantly, why should the client spend money and resources to do this project?
+
+    By predicting which customers are most likely to leave, we hope that the companies are able to target them with some kind of offer/promotion that incentivizes them to continue staying part of their service. Although offering a promotion cuts into the companies profit, it is a lot smaller in comparison to the amount that they would lose if they were to lose a customer. Therefore, by accurately predicting which customers are most likely to leave and making them stay, telecom companies would significantly increase their profits. One thing to note is that there is some potential downside to this in the case of a false positive because they would be offering a promotion to someone that wasn't actually going to leave causing the company to lose profit instead.
