@@ -149,7 +149,7 @@ a.sourceLine {
 <h2>Business Problem</h2>
 <div id="what-business-problem-are-you-addressing-remember---we-take-a-very-wide-and-broad-view-of-what-is-business.-you-should-describe-the-context---who-is-your-audience-what-decision-do-they-need-to-make-why-is-this-problem-significantimportant" class="section level3">
 <h3>What business problem are you addressing? Remember - we take a very wide and broad view of what is “business”. You should describe the context - who is your audience, what decision do they need to make, why is this problem significant/important?</h3>
-<p>The business problem that we hope to address with our project is the cost of losing customers. Our target audience are telecom companies because we hope that our data can help them identify which customers are most likely to churn (in other words leave) their service. The decision that they need to make is which customers to offer promotions too, so by accuratly predicting which customers are most likely to leave, they can target only that customer type and hopefully retain the customer. This problem is significant because the telecom industry is extremely competitive and usually relies on customers staying with the company for an extended period of time for revenue and long term profitability. When a customer leaves their service, this harms the company because they lose a source of income and any infrastructure costs remain constant regardless of whether there is one less customer using the service.</p>
+<p>The business problem that we hope to address with our project is the cost of losing customers. Our target audience is the management of telecom companies, as the findings of our analysis will help them identify which customers are most likely to cease use of their service (“churn”). If management can successfully identify these individuals, then they can construct targeted promotions and advertising campaigns focused on this precarious segment. This problem is significant because the telecom industry is extremely competitive and usually relies on customer retention for revenue and long-term profitability. When a customer is lost, this harms the company not only because they lose a source of income, but also since many infrastructure costs remain constant despite one fewer customer using the service.</p>
 </div>
 </div>
 <div id="dataset" class="section level2">
@@ -217,7 +217,18 @@ a.sourceLine {
 <p>Source: Kaggle</p>
 <p>Size: 7043 rows (customers) and 21 columns (features)</p>
 <p>Response: “Churn” column</p>
-<p>Predictors: Information regarding: Services that each customer has signed up for (phone, multiple lines, internet, online security, online backup, device protection, tech support, and streaming TV and movies), Customer account information (how long they’ve been a customer, contract, payment method, paperless billing, monthly charges, and total charges), and Demographic info about customers (gender, age range, and if they have partners and dependents)</p>
+<p>Predictors:</p>
+<ul>
+<li>
+<b>Information regarding services</b> that each customer has signed up for (phone, multiple lines, internet, online security, online backup, device protection, tech support, and streaming TV and movies)
+</li>
+<li>
+<b>Customer account information</b> (how long they’ve been a customer, contract, payment method, paperless billing, monthly charges, and total charges)
+</li>
+<li>
+<b>Demographic info</b> about customers (gender, age range, and if they have partners and dependents)
+</li>
+</ul>
 </div>
 </div>
 <div id="challenges" class="section level2">
@@ -231,7 +242,8 @@ a.sourceLine {
 <h2>Why this project</h2>
 <div id="lastly---but-most-importantly-why-should-the-client-spend-money-and-resources-to-do-this-project" class="section level3">
 <h3>Lastly - but most importantly, why should the client spend money and resources to do this project?</h3>
-<p>By predicting which customers are most likely to leave, we hope that the companies are able to target them with some kind of offer/promotion that incentivizes them to continue staying part of their service. Although offering a promotion cuts into the companies profit, it is a lot smaller in comparison to the amount that they would lose if they were to lose a customer. Therefore, by accurately predicting which customers are most likely to leave and making them stay, telecom companies would significantly increase, or at least maintain, their profits. One thing to note is that there is some potential downside to this in the case of a false positive because they would be offering a promotion to someone that wasn’t actually going to leave causing the company to lose profit instead.</p>
+<p>By predicting which customers are most likely to leave, companies can target them with an offer or promotion that incentivizes them to continue using their service. Although offering a promotion cuts into profit, if structured properly, the promotional expenditure will be small relative to the incremental contraction in revenue associated with the loss of a customer. Therefore, by accurately predicting which customers are most likely to leave and successfully offering them incentives to remain on the platform, telecom companies can significantly increase their profits.</p>
+<p>It should be noted that there is risk associated with this strategy, particularly in the case of a false positive. If a company identifies a customer as likely to churn when they actually are not, offering a promotion to such a customer would result in the company losing profit. Understanding the danger of false positives will help guide our analysis, and may be reason for us to select a more conservative model as opposed to one which identifies potential churn candidates more liberally. We look forward to meticulously analyzing the data at hand and performing an analysis that adds significant value to our client’s business model.</p>
 </div>
 </div>
 </article>
