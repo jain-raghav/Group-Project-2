@@ -1,0 +1,47 @@
+---
+title: "Dataset Exploration"
+author: "Malik Abbasi"
+date: "11/2/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Data Cleaning and Organization
+```{r}
+cdata <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv", stringsAsFactors = TRUE)
+
+#Removing CustomerID from dataset as it is not predictive
+cdata$customerID <- NULL
+
+#converting senior citizen to a factor as all values are binary
+cdata$SeniorCitizen <- as.factor(cdata$SeniorCitizen)
+
+str(cdata)
+summary(cdata)
+
+#creating test and train set
+set.seed(12345)
+test_set <- sample(1:nrow(cdata), round(nrow(data) / 2,0))
+
+c_train <- cdata[-test_set, -match("Churn",names(cdata))]
+c_test <- cdata[test_set, -match("Churn",names(cdata))]
+
+#labels for the response variable 
+
+c_train_labels <- cdata[-test_set, "Churn"]
+c_test_labels <- cdata[test_set, "Churn"]
+```
+
+### Linear Regression Model
+```{r}
+#linear regression model needs numeric dependent variable, so convert train labels from Yes/No to 1/0
+c_train_labels_numeric <- ifelse(c_train_labels == "Yes", 1, 0)
+
+#first model
+lm1 <- lm(c_train_labels_numeric ~ ., data = c_train)
+summary(lm1)
+```
+
