@@ -13,35 +13,93 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 cdata <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv", stringsAsFactors = TRUE)
 
+#Removes rows with any NA values -- Should not affect results as there is a total of 7500+ rows of data and only 11 rows are removed
+cdata <- na.omit(cdata)
+
 #Removing CustomerID from dataset as it is not predictive
 cdata$customerID <- NULL
 
-#converting senior citizen to a factor as all values are binary
-cdata$SeniorCitizen <- as.factor(cdata$SeniorCitizen)
+#replace "no phone/internet service" with no to limit numbers of factors
+cdata$OnlineSecurity <- as.factor(ifelse(cdata$OnlineSecurity == "No internet service" | cdata$OnlineSecurity == "No", "No", "Yes"))
+cdata$OnlineBackup <- as.factor(ifelse(cdata$OnlineBackup == "No internet service" | cdata$OnlineBackup == "No", "No", "Yes"))
+cdata$DeviceProtection <- as.factor(ifelse(cdata$DeviceProtection == "No internet service" | cdata$DeviceProtection == "No", "No", "Yes"))
+cdata$TechSupport <- as.factor(ifelse(cdata$TechSupport == "No internet service" | cdata$TechSupport == "No", "No", "Yes"))
+cdata$StreamingTV <- as.factor(ifelse(cdata$StreamingTV == "No internet service" | cdata$StreamingTV == "No", "No", "Yes"))
+cdata$StreamingMovies <- as.factor(ifelse(cdata$StreamingMovies == "No internet service" | cdata$StreamingMovies == "No", "No", "Yes"))
+cdata$MultipleLines <- as.factor(ifelse(cdata$MultipleLines == "No phone service" | cdata$MultipleLines == "No", "No", "Yes"))
 
 str(cdata)
 summary(cdata)
 
+###
+###
+cdataMatrix <- as.data.frame(model.matrix(~.-1,cdata))
+
+#Normalize the data
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+# we are going to normalize everything 
+cdataMatrix <- as.data.frame(lapply(cdataMatrix, normalize))
+###
+###
+
 #creating test and train set
 set.seed(12345)
-test_set <- sample(1:nrow(cdata), round(nrow(data) / 2,0))
+test_set <- sample(1:nrow(cdata), round(nrow(cdata) / 2,0))
 
 c_train <- cdata[-test_set, -match("Churn",names(cdata))]
 c_test <- cdata[test_set, -match("Churn",names(cdata))]
+c_trainMatrix <- cdataMatrix[-test_set, -match("ChurnYes",names(cdataMatrix))]
+c_testMatrix <- cdataMatrix[test_set, -match("ChurnYes",names(cdataMatrix))]
 
 #labels for the response variable 
 
 c_train_labels <- cdata[-test_set, "Churn"]
 c_test_labels <- cdata[test_set, "Churn"]
+c_train_labelsMatrix <- cdataMatrix[-test_set, "ChurnYes"]
+c_test_labelsMatrix <- cdataMatrix[test_set, "ChurnYes"]
 ```
 
-### Linear Regression Model
+### Logistic Regression Model
 ```{r}
-#linear regression model needs numeric dependent variable, so convert train labels from Yes/No to 1/0
+#first model
 c_train_labels_numeric <- ifelse(c_train_labels == "Yes", 1, 0)
 
-#first model
-lm1 <- lm(c_train_labels_numeric ~ ., data = c_train)
-summary(lm1)
+glm1 <- glm(c_train_labels_numeric ~ ., data = c_train, family = binomial)
+summary(glm1)
 ```
 
+### KNN Model
+```{r}
+library(class)
+library(caret)
+knn1 <- knn(train = c_trainMatrix, test = c_testMatrix, cl = c_train_labelsMatrix, k = sqrt(nrow(c_trainMatrix)))
+
+library(gmodels)
+CrossTable(x = c_train_labelsMatrix, y = knn1, prop.chisq=FALSE)
+
+confusionMatrix(knn1, as.factor(c_test_labelsMatrix))
+```
+
+### ANN Model
+```{r}
+library(neuralnet)
+ann1 <- neuralnet(formula = c_train_labelsMatrix ~ . , data = c_trainMatrix)
+plot(ann1)
+
+ann_results <- compute(ann1, c_testMatrix)
+predicted_y <- ann_results$net.result
+predicted_y_dummy <- ifelse(predicted_y >= 0.5, 1, 0)
+
+library(gmodels)
+CrossTable(x = c_train_labelsMatrix, y = predicted_y_dummy, 
+           prop.chisq=FALSE)
+
+library(caret)
+confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(predicted_y_dummy))
+```
+
+### Preliminary Conclusions
+#### Based on models above, are you on track to acheiving your objectives. Are the models helpful on your decision making? How do you need to improve the models?
