@@ -1,6 +1,6 @@
 ---
 title: "Dataset Exploration"
-author: "Malik Abbasi"
+author: "Malik Abbasi, Raghav, Himansu, Ari"
 date: "11/2/2021"
 output: html_document
 ---
@@ -102,4 +102,7 @@ confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(predicted_y_dummy))
 ```
 
 ### Preliminary Conclusions
-#### Based on models above, are you on track to acheiving your objectives. Are the models helpful on your decision making? How do you need to improve the models?
+#### Based on models above, are you on track to acheiving your objectives. Are the models helpful on your decision making? How do you need to improve the models?\
+
+We believe that we are on track to our objectives. Know that we have baseline models working, we can continually improve them to get better data and info. 
+For example with the log regression, there were many variables that seemed insignificant so we can definitely improve on that. Similarly, with the KNN and ANN we can try to get a better confusion matrix where we have less false positives and better prediction accuracy. 
