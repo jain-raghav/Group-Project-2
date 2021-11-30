@@ -1,8 +1,13 @@
 ---
 title: "Dataset Exploration"
-author: "Malik Abbasi, Raghav, Himansu, Ari"
+author: "Malik Abbasi, Raghav Jain, Himansu Vepamakula, Ari Bosse"
 date: "11/2/2021"
-output: html_document
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_float:
+      toc_collapsed: true
 ---
 
 ```{r setup, include=FALSE}
@@ -11,13 +16,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Data Cleaning and Organization
 ```{r}
+library(caret)
 cdata <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv", stringsAsFactors = TRUE)
 
 #Removes rows with any NA values -- Should not affect results as there is a total of 7500+ rows of data and only 11 rows are removed
 cdata <- na.omit(cdata)
 
+
+#upsample dataset to have equal observations for churn outcomes
+cdata <- upSample(cdata, as.factor(cdata$Churn))
+
 #Removing CustomerID from dataset as it is not predictive
 cdata$customerID <- NULL
+cdata$Class <- NULL
 
 #replace "no phone/internet service" with no to limit numbers of factors
 cdata$OnlineSecurity <- as.factor(ifelse(cdata$OnlineSecurity == "No internet service" | cdata$OnlineSecurity == "No", "No", "Yes"))
@@ -64,11 +75,26 @@ c_test_labelsMatrix <- cdataMatrix[test_set, "ChurnYes"]
 
 ### Logistic Regression Model
 ```{r}
+library(caret)
 #first model
 c_train_labels_numeric <- ifelse(c_train_labels == "Yes", 1, 0)
+c_test_labels_numeric <- ifelse(c_test_labels == "Yes", 1, 0)
 
 glm1 <- glm(c_train_labels_numeric ~ ., data = c_train, family = binomial)
 summary(glm1)
+
+#Optimizing logistic regression
+glm2 <- step(glm1, direction = "backward")
+
+#Looking at model
+summary(glm2)
+
+#Predicting based off of model
+prediction <- predict(glm2, c_test, type = "response")
+prediction2 <- as.factor(ifelse(prediction > 0.5, 1, 0))
+
+#Creating confusion matrix
+glmmatrix <- confusionMatrix(prediction2, as.factor(c_test_labels_numeric))
 ```
 
 ### KNN Model
@@ -80,7 +106,7 @@ knn1 <- knn(train = c_trainMatrix, test = c_testMatrix, cl = c_train_labelsMatri
 library(gmodels)
 CrossTable(x = c_train_labelsMatrix, y = knn1, prop.chisq=FALSE)
 
-confusionMatrix(knn1, as.factor(c_test_labelsMatrix))
+knnmatrix <- confusionMatrix(knn1, as.factor(c_test_labelsMatrix))
 ```
 
 ### ANN Model
@@ -98,11 +124,123 @@ CrossTable(x = c_train_labelsMatrix, y = predicted_y_dummy,
            prop.chisq=FALSE)
 
 library(caret)
-confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(predicted_y_dummy))
+annmatrix <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(predicted_y_dummy))
 ```
 
-### Preliminary Conclusions
-#### Based on models above, are you on track to acheiving your objectives. Are the models helpful on your decision making? How do you need to improve the models?\
+### SVM
+```{r}
+library(kernlab)
+#Creating SVM model (polydot)
+svm_poly <- ksvm(c_train_labelsMatrix ~ ., data = c_trainMatrix,
+                          kernel = "polydot")
+svmpred_poly <- predict(svm_poly, c_testMatrix)
+svmpred_poly <- ifelse(svmpred_poly >= 0.5, 1, 0)
+#Creating polydot confusion matrix
+svmmatrix_poly <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(svmpred_poly))
 
-We believe that we are on track to our objectives. Know that we have baseline models working, we can continually improve them to get better data and info. 
-For example with the log regression, there were many variables that seemed insignificant so we can definitely improve on that. Similarly, with the KNN and ANN we can try to get a better confusion matrix where we have less false positives and better prediction accuracy. 
+#Creating SVM model (laplace)
+svm_laplace <- ksvm(c_train_labelsMatrix ~ ., data = c_trainMatrix,
+                          kernel = "laplacedot")
+svmpred_laplace <- predict(svm_laplace, c_testMatrix)
+svmpred_laplace <- ifelse(svmpred_laplace >= 0.5, 1, 0)
+#Creating laplace confusion matrix
+svmmatrix_laplace <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(svmpred_laplace))
+
+#Creating SVM model (rdfdot)
+svm_rbf <- ksvm(c_train_labelsMatrix ~ ., data = c_trainMatrix,
+                          kernel = "rbfdot")
+svmpred_rbf <- predict(svm_rbf, c_testMatrix)
+svmpred_rbf <- ifelse(svmpred_rbf >= 0.5, 1, 0)
+#Creating rdfdot confusion matrix
+svmmatrix_rbf <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(svmpred_rbf))
+
+#Finding out which SVM model worked the best
+svmmatrix_poly
+svmmatrix_laplace
+svmmatrix_rbf
+svmmatrix <- svmmatrix_rbf
+```
+
+### Decision Tree
+```{r}
+library("C50")
+library(gmodels)
+
+#Creating decision tree model
+mod1 <- C5.0(c_train_labels ~ ., data = c_train)
+plot(mod1)
+summary(mod1)
+
+#Creating prediction from decision tree model
+treepred <- predict(mod1, c_test)
+treematrix <- confusionMatrix(as.factor(c_test_labels), treepred)
+
+#Creating second decision tree model
+#mod2 <- C5.0(c_train_labels ~ senior_citizen + dependents_yes + tenure +
+#                    multiple_lines_yes + internet_service_fiber_optic + internet_service_no +
+#                    online_security_yes + tech_support_yes + streaming_tv_yes + streaming_movies_yes +
+#                    contract_one_year + contract_two_year + paperless_billing_yes + 
+#                    payment_method_electronic_check + monthly_charges + total_charges, data = c_train)
+#plot(mod2)
+#summary(mod2)
+
+#Creating predicition from the second decision tree model
+#treepred2 <- predict(mod2, telcomatrix_jan)
+#treematrix2 <- confusionMatrix(as.factor(telcomatrix_jan$churn_yes), treepred2)
+
+#Finding out which decision tree matrix worked the best
+treematrix
+#treematrix2
+```
+
+### Stacked Model
+
+```{r}
+#Creating combining prediction vector
+stacked <- data.frame(c_test_labelsMatrix, prediction2, knn1, predicted_y_dummy, treepred, svmpred_rbf)
+names(stacked) <- c("Actual", "GLM", "KNN", "ANN", "TREE", "SVM")
+
+#Manging data
+stacked$Actual <- as.factor(stacked$Actual)
+stacked$ANN <- as.factor(stacked$ANN)
+stacked$SVM <- as.factor(stacked$SVM)
+stacked$TREE <- as.factor(ifelse(stacked$TREE == "Yes", 1, 0))
+
+#Examining struture of dataframe
+str(stacked)
+
+#Creating test and train sets
+stacked_train <- stacked[1:nrow(stacked)*3/4, ]
+stacked_test  <- stacked[nrow(stacked)*3/4 + 1:nrow(stacked), ]
+
+#Creating decision tree on the train set
+dectree <- C5.0(Actual ~ ., data = stacked_train)
+plot(dectree)
+summary(dectree)
+
+#Predicting the test data
+dectreepred <- predict(dectree, stacked_test)
+stackedmatrix <- confusionMatrix(stacked_test$Actual, dectreepred)
+
+#Creating confusion matrix for stacked model
+stackedmatrix
+```
+
+### Comparing all models
+
+```{r}
+glmmatrix$overall
+knnmatrix$overall
+annmatrix$overall
+svmmatrix_rbf$overall
+treematrix$overall
+stackedmatrix$overall
+```
+
+
+### Preliminary Conclusions
+#### Based on models above, are you on track to acheiving your objectives. Are the models helpful on your decision making? How do you need to improve the models?
+
+We believe that we are on track to our objectives. Know that we have baseline models working, we can continually improve them to get better data and info. The preliminary versions of our models show promise and already have somewhat high levels of accuracy.
+For the log regression model, there are many statistically insignificant variables that we can remove or use to find interaction effects, so we can definitely improve the model that way.
+We can use the results of exploring variable combinations for the log regression to inform the variables we use for our KNN and ANN models, which could potentially increase the accuracy of the models, indicated by metrics such as accuracy, sensitivity, and specificity. 
