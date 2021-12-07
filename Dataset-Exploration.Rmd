@@ -73,6 +73,14 @@ c_train_labelsMatrix <- cdataMatrix[-test_set, "ChurnYes"]
 c_test_labelsMatrix <- cdataMatrix[test_set, "ChurnYes"]
 ```
 
+### Data Visualization
+
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+
 ### Logistic Regression Model
 ```{r}
 library(caret)
@@ -229,18 +237,21 @@ stackedmatrix
 ### Comparing all models
 
 ```{r}
+glmmatrix
+
 glmmatrix$overall
 knnmatrix$overall
 annmatrix$overall
 svmmatrix_rbf$overall
 treematrix$overall
 stackedmatrix$overall
+
+accuracies <- c(glmmatrix$overall[1], knnmatrix$overall[1], annmatrix$overall[1], svmmatrix_rbf$overall[1], treematrix$overall[1], stackedmatrix$overall[1])
+kappas <- c(glmmatrix$overall[2], knnmatrix$overall[2], annmatrix$overall[2], svmmatrix_rbf$overall[2], treematrix$overall[2], stackedmatrix$overall[2])
+names <- c("GLM", "ANN", "KNN", "SVM", "TREE", "STACKED")
+models <- data.frame(names, accuracies, kappas)
+
+models %>% arrange(as.numeric(accuracies)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(accuracies) * 100, fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,100) + geom_text(aes(label = paste(round(as.numeric(accuracies) * 100, 2), "%"), vjust = -0.5)) + ylab("Accuracy (%)") + xlab("Model")
+
+models %>% arrange(as.numeric(kappas)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(kappas), fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,1) + geom_text(aes(label = paste(round(as.numeric(kappas), 2)), vjust = -0.5)) + ylab("Kappa") + xlab("Model")
 ```
-
-
-### Preliminary Conclusions
-#### Based on models above, are you on track to acheiving your objectives. Are the models helpful on your decision making? How do you need to improve the models?
-
-We believe that we are on track to our objectives. Know that we have baseline models working, we can continually improve them to get better data and info. The preliminary versions of our models show promise and already have somewhat high levels of accuracy.
-For the log regression model, there are many statistically insignificant variables that we can remove or use to find interaction effects, so we can definitely improve the model that way.
-We can use the results of exploring variable combinations for the log regression to inform the variables we use for our KNN and ANN models, which could potentially increase the accuracy of the models, indicated by metrics such as accuracy, sensitivity, and specificity. 
