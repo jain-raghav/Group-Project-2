@@ -39,6 +39,8 @@ cdata$StreamingTV <- as.factor(ifelse(cdata$StreamingTV == "No internet service"
 cdata$StreamingMovies <- as.factor(ifelse(cdata$StreamingMovies == "No internet service" | cdata$StreamingMovies == "No", "No", "Yes"))
 cdata$MultipleLines <- as.factor(ifelse(cdata$MultipleLines == "No phone service" | cdata$MultipleLines == "No", "No", "Yes"))
 
+cdata$NumServices <- as.numeric(cdata$PhoneService == "Yes") + as.numeric(cdata$MultipleLines == "Yes") + as.numeric(cdata$InternetService != "No") + as.numeric(cdata$OnlineSecurity == "Yes") + as.numeric(cdata$OnlineBackup == "Yes") + as.numeric(cdata$DeviceProtection == "Yes") + as.numeric(cdata$TechSupport == "Yes") + as.numeric(cdata$StreamingTV == "Yes") + as.numeric(cdata$StreamingMovies == "Yes")
+
 str(cdata)
 summary(cdata)
 
@@ -78,6 +80,49 @@ c_test_labelsMatrix <- cdataMatrix[test_set, "ChurnYes"]
 ```{r}
 library(ggplot2)
 library(dplyr)
+
+#Exploring Gender and Senior Citizens
+cdata %>% ggplot(.) + geom_histogram(aes(x = gender, fill = gender), stat = "count") + ggtitle("Customer Genders") + xlab("Gender") + ylab("Count")
+
+cdata %>% group_by(Churn,gender) %>% summarise(count = n()) %>% ggplot(.) + geom_col(aes(x=Churn, y = count, fill = gender)) + xlab("Churn") + ylab("Count") 
+
+cdata %>% ggplot(.) + geom_histogram(aes(x=ifelse(as.factor(SeniorCitizen) == 1, "Yes", "No"), fill = gender),  stat = "count") + ggtitle("Senior Citizen Customers") + xlab("Senior Citizen Status") + ylab("Count")
+```
+
+```{r}
+#Exploring Tenure
+cdata %>% ggplot(.)  + geom_density(aes(tenure,group=gender, fill=gender, colour=gender), alpha=0.15) + ggtitle("Distribution of tenure per gender") + xlab("Tenure (in months)")
+
+cdata %>% ggplot(.) + geom_histogram(aes(x = tenure, fill = gender)) + ggtitle("Tenure length, filled by gender") + xlab("Tenure (in months)")
+
+cdata %>% ggplot(.) + geom_boxplot(aes(x = as.factor(SeniorCitizen), y = tenure, fill = gender)) + xlab("Senior Citizen Status") + ylab("Tenure (in months)")
+
+cdata %>% ggplot(.) + geom_boxplot(aes(x = Churn, y = tenure, fill= gender))
+
+#Exploring Contract Types
+cdata %>% ggplot(.) + geom_histogram(aes(x = Contract, fill = gender), stat = "count") + ggtitle("Contract types, filled by gender") + xlab("Contract Type") + ylab("Number of Customers")
+
+cdata %>% group_by(Contract) %>% summarise(avg = mean(MonthlyCharges)) %>% ggplot(.) + geom_col(aes(x=Contract, y = avg)) + xlab("Contract Type") + ylab("Average Monthly Charge") 
+
+cdata %>% ggplot(.) + geom_boxplot(aes(x = Churn, y = MonthlyCharges, fill = gender))
+
+#Exploring Number of Services
+
+services <- c("Total", "Phone", "Multiple Phones", "Internet", "Online Security", "Online Backup", "Device Protection", "Tech Support", "Streaming TV", "Streaming Movies")
+
+counts <- c(nrow(cdata[,]), nrow(cdata[cdata$PhoneService == "Yes", ]), nrow(cdata[cdata$MultipleLines == "Yes", ]), nrow(cdata[cdata$InternetService != "No", ]),nrow(cdata[cdata$OnlineSecurity == "Yes", ]),nrow(cdata[cdata$OnlineBackup == "Yes", ]),nrow(cdata[cdata$DeviceProtection == "Yes", ]),nrow(cdata[cdata$TechSupport == "Yes", ]),nrow(cdata[cdata$StreamingTV == "Yes", ]),nrow(cdata[cdata$StreamingMovies == "Yes", ]))
+
+countserv <- data.frame(services, counts)
+countserv$services  <- with(countserv, reorder(services, -counts))
+
+countserv %>% ggplot(.) + geom_col(aes(x=services, y = counts, fill = services)) + xlab("Services") + ylab("Count of Purchasing Customers") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + ggtitle("Services Purchased")
+
+cdata %>% group_by(Contract) %>% summarise(avg = mean(NumServices)) %>% ggplot(.) + geom_col(aes(x=Contract, y = avg)) + xlab("Contract Type") + ylab("Average Number of Services") + ggtitle("Number of Services")
+
+cdata %>% group_by(NumServices) %>% summarise(avg = mean(MonthlyCharges)) %>% ggplot(.) + geom_col(aes(x=NumServices, y = avg)) + xlab("Number of Services") + ylab("Average Monthly Charge") 
+
+cdata %>% ggplot(.) + geom_boxplot(aes(x = as.factor(Churn), y = NumServices)) + xlab("Churn") + ylab("Number of Services")
+
 ```
 
 
