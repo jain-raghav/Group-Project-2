@@ -102,9 +102,9 @@ cdata %>% ggplot(.) + geom_boxplot(aes(x = Churn, y = tenure, fill= gender))
 #Exploring Contract Types
 cdata %>% ggplot(.) + geom_histogram(aes(x = Contract, fill = gender), stat = "count") + ggtitle("Contract types, filled by gender") + xlab("Contract Type") + ylab("Number of Customers")
 
-cdata %>% group_by(Contract) %>% summarise(avg = mean(MonthlyCharges)) %>% ggplot(.) + geom_col(aes(x=Contract, y = avg)) + xlab("Contract Type") + ylab("Average Monthly Charge") 
+cdata %>% group_by(Contract) %>% summarise(avg = mean(MonthlyCharges)) %>% ggplot(.) + geom_col(aes(x=Contract, y = avg)) + xlab("Contract Type") + ylab("Average Monthly Charge") + ggtitle("Average Monthly cost per Contract")
 
-cdata %>% ggplot(.) + geom_boxplot(aes(x = Churn, y = MonthlyCharges, fill = gender))
+cdata %>% ggplot(.) + geom_boxplot(aes(x = Churn, y = MonthlyCharges, fill = gender)) + ggtitle("Churn by Monthly Charges")
 
 #Exploring Number of Services
 
@@ -121,7 +121,7 @@ cdata %>% group_by(Contract) %>% summarise(avg = mean(NumServices)) %>% ggplot(.
 
 cdata %>% group_by(NumServices) %>% summarise(avg = mean(MonthlyCharges)) %>% ggplot(.) + geom_col(aes(x=NumServices, y = avg)) + xlab("Number of Services") + ylab("Average Monthly Charge") 
 
-cdata %>% ggplot(.) + geom_boxplot(aes(x = as.factor(Churn), y = NumServices)) + xlab("Churn") + ylab("Number of Services")
+cdata %>% ggplot(.) + geom_boxplot(aes(x = as.factor(Churn), y = NumServices)) + xlab("Churn") + ylab("Number of Services") + ggtitle("Churn by number of services purchased")
 
 ```
 
