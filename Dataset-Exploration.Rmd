@@ -44,8 +44,6 @@ cdata$NumServices <- as.numeric(cdata$PhoneService == "Yes") + as.numeric(cdata$
 str(cdata)
 summary(cdata)
 
-###
-###
 cdataMatrix <- as.data.frame(model.matrix(~.-1,cdata))
 
 #Normalize the data
@@ -282,8 +280,6 @@ stackedmatrix
 ### Comparing all models
 
 ```{r}
-glmmatrix
-
 glmmatrix$overall
 knnmatrix$overall
 annmatrix$overall
@@ -292,11 +288,28 @@ treematrix$overall
 stackedmatrix$overall
 
 accuracies <- c(glmmatrix$overall[1], knnmatrix$overall[1], annmatrix$overall[1], svmmatrix_rbf$overall[1], treematrix$overall[1], stackedmatrix$overall[1])
+
 kappas <- c(glmmatrix$overall[2], knnmatrix$overall[2], annmatrix$overall[2], svmmatrix_rbf$overall[2], treematrix$overall[2], stackedmatrix$overall[2])
+
+sensitivities <- c(glmmatrix$byClass[1], knnmatrix$byClass[1], annmatrix$byClass[1], svmmatrix_rbf$byClass[1], treematrix$byClass[1],stackedmatrix$byClass[1])
+
+specificities <- c(glmmatrix$byClass[2], knnmatrix$byClass[2], annmatrix$byClass[2], svmmatrix_rbf$byClass[2], treematrix$byClass[2],stackedmatrix$byClass[2])
+
 names <- c("GLM", "ANN", "KNN", "SVM", "TREE", "STACKED")
-models <- data.frame(names, accuracies, kappas)
+models <- data.frame(names, accuracies, kappas, sensitivities, specificities)
 
-models %>% arrange(as.numeric(accuracies)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(accuracies) * 100, fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,100) + geom_text(aes(label = paste(round(as.numeric(accuracies) * 100, 2), "%"), vjust = -0.5)) + ylab("Accuracy (%)") + xlab("Model")
+models %>% arrange(as.numeric(accuracies)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(accuracies) * 100, fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,100) + geom_text(aes(label = paste(round(as.numeric(accuracies) * 100, 2), "%"), vjust = -0.5)) + ylab("Accuracy (%)") + xlab("Model") + ggtitle("Model Accuracies")
 
-models %>% arrange(as.numeric(kappas)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(kappas), fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,1) + geom_text(aes(label = paste(round(as.numeric(kappas), 2)), vjust = -0.5)) + ylab("Kappa") + xlab("Model")
+models %>% arrange(as.numeric(kappas)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(kappas), fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,1) + geom_text(aes(label = paste(round(as.numeric(kappas), 2)), vjust = -0.5)) + ylab("Kappa") + xlab("Model") + ggtitle("Model Kappa Values")
+
+models %>% arrange(as.numeric(sensitivities)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(sensitivities) * 100, fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,100) + geom_text(aes(label = paste(round(as.numeric(sensitivities) * 100, 2), "%"), vjust = -0.5)) + ylab("Sensitivity (%)") + xlab("Model") + ggtitle("Model Sensitivities")
+
+models %>% arrange(as.numeric(specificities)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(specificities) * 100, fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,100) + geom_text(aes(label = paste(round(as.numeric(specificities) * 100, 2), "%"), vjust = -0.5)) + ylab("Specificity (%)") + xlab("Model") + ggtitle("Model Specificities")
+
+library(reshape2)
+modelsmelt <- melt(models ,  id.vars = 'names', variable.name = 'series')
+
+modelsmelt %>% ggplot(aes(names, value)) + geom_bar(stat="identity", position = "dodge", aes(fill = series)) + ylim(0,1) + ggtitle("Model Comparison") + xlab("Model") + ylab("Value") + scale_fill_discrete(name = "Metrics", labels = c("Accuracy", "Kappa", "Sensitivity", "Specificity"))
+
+modelsmelt %>% ggplot(aes(series, value)) + geom_bar(stat="identity", position = "dodge", aes(fill = names)) + ylim(0,1) + ggtitle("Model Comparison") + xlab("Metric") + ylab("Value") +  scale_fill_discrete(name = "Models") + scale_x_discrete(labels = c("Accuracy", "Kappa", "Sensitivity", "Specificity"))
 ```
