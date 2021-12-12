@@ -16,10 +16,11 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 ## Introduction
-The purpose of this report is to help prevent customer churn at Telco. Telco is a legacy telecommunications provider offering products such as cable phone, and internet service to its customers. Telecommunications is a high margin industry marked by increasing consolidation, high customer lifetime value, and room for investment in customer retention. Telco has hired us to examine factors impacting customer decision making with the goal of reducing churn, and in this report we will take a deeper dive into that. Our ultimate goal is to be able to accurately predict which customers will churn so we can target them with a promotion or incentive to keep their services.
+Telco is a legacy telecommunications provider offering products such as cable phone, and internet service to its customers. Telecommunications is a high margin industry marked by increasing consolidation, high customer lifetime value, and room for investment in customer retention. 
+
+Telco has hired us to examine factors impacting customer decision making with the goal of reducing churn, and in this report we will take a deeper dive into that. Our ultimate goal is to be able to accurately predict which customers will churn so we can target them with a promotion or incentive to keep their services.
 
 We are going to start by importing the data set and loading all libraries that we will be working with followed by cleaning the data so it is ready for analysis. 
-
 
 ## Data Cleaning and Organization
 ```{r}
@@ -42,9 +43,17 @@ str(cdata)
 summary(cdata)
 ```
 
-Looking at the data summaries, we observed that there were far fewer positive outcomes (customer churned) than negative outcomes. To account for this we are going to up sample the data to make it more balanced. We also removed non predictive factors and made formatting changes to other factors to make it easier to analyze later on. 
+We see there are 11 data points which are not complete - indicated by the 11 NA's in the Total Charges five number summary. As a result of this, we decided to remove the 11 rows with missing data. This should not affect results are there is a more than 7500 rows of data and only 11 out of those are being omitted.
 
-###Additional Cleaning
+Additionally, we observed that there were far fewer positive outcomes (customer churned) than negative outcomes. To account for this we are going to upsample the data to make it more balanced. By upsamplsing, we are esstentially undergoing a process of expansion by producing an approximation of the sequence of samples that would have been obtained by sampling the data at a higher density of customers who did churn.  
+
+Moreover, certain variables, such as Cutomer ID and Class, are not predictive. Instead, these are just used to identify the various customers of the company. Therefore, these variables were removed as they should not be significant in our predictive models.
+
+Furthermore, we see certain variables (Online Security, Online Backup, Device Protection, Tech Support, Streaming TV, Streaming Movies, and Multiple Lines) have three factor levels. However, these factors can just be limited to two levels as the factor levels provided are dependent upon other variables. We reduced the factor levels present in all of these variables.
+
+Finally, we created an additional variable: Number of Services. We believed that this would be a significant variable in our analysis. For example having too many or too few services could potentially lead to customers leaving their provider as they may believe the services to be a hinderance or unnecessary, respectively.
+
+### Data Cleaning & Management
 ```{r}
 #Removes rows with any NA values -- Should not affect results as there is a total of 7500+ rows of data and only 11 rows are removed
 cdata <- na.omit(cdata)
@@ -65,6 +74,7 @@ cdata$StreamingTV <- as.factor(ifelse(cdata$StreamingTV == "No internet service"
 cdata$StreamingMovies <- as.factor(ifelse(cdata$StreamingMovies == "No internet service" | cdata$StreamingMovies == "No", "No", "Yes"))
 cdata$MultipleLines <- as.factor(ifelse(cdata$MultipleLines == "No phone service" | cdata$MultipleLines == "No", "No", "Yes"))
 
+#Creating new variable pertaining to total number of services
 cdata$NumServices <- as.numeric(cdata$PhoneService == "Yes") + as.numeric(cdata$MultipleLines == "Yes") + as.numeric(cdata$InternetService != "No") + as.numeric(cdata$OnlineSecurity == "Yes") + as.numeric(cdata$OnlineBackup == "Yes") + as.numeric(cdata$DeviceProtection == "Yes") + as.numeric(cdata$TechSupport == "Yes") + as.numeric(cdata$StreamingTV == "Yes") + as.numeric(cdata$StreamingMovies == "Yes")
 
 str(cdata)
@@ -73,9 +83,8 @@ summary(cdata)
 cdataMatrix <- as.data.frame(model.matrix(~.-1,cdata))
 ```
 
-
-##Dataset Training 
-In this next section, we are going to normalize our data and then create two sets for training and testing. This step is important for some of the models we are going to run.
+## Dataset Training 
+In this next section, we are going to normalize our data as well as create training and test data sets. This process is necessary as these data sets will be used in numerous models that will be built during our analysis.
 
 ```{r}
 #Normalize the data
@@ -100,11 +109,9 @@ c_test_labelsMatrix <- cdataMatrix[test_set, "ChurnYes"]
 ```
 
 ## Data Visualization
-Before, making our models we wanted to look at some visualizations to better understand our data. Using these graphs, we were able to see that customers are split relatively 50-50 based on gender and that about 2000 customers out of the 10000 were senior citizens. We were also able to get some additional information that you can see pictured on the graph. 
+Before, making our models we wanted to look at some visualizations to better understand our data and perhaps identify certain variables which should be, or will be, significant in predicting churn. Using these graphs, we were able to see that customers are split relatively 50-50 based on gender and that about 2000 customers out of the 10000 were senior citizens. We were also able to get some additional information that you can see pictured on the graph. 
 
 ```{r}
-
-
 #Exploring Gender and Senior Citizens
 cdata %>% ggplot(.) + geom_histogram(aes(x = gender, fill = gender), stat = "count") + ggtitle("Customer Genders") + xlab("Gender") + ylab("Count")
 
@@ -146,14 +153,14 @@ cdata %>% group_by(Contract) %>% summarise(avg = mean(NumServices)) %>% ggplot(.
 cdata %>% group_by(NumServices) %>% summarise(avg = mean(MonthlyCharges)) %>% ggplot(.) + geom_col(aes(x=NumServices, y = avg)) + xlab("Number of Services") + ylab("Average Monthly Charge") 
 
 cdata %>% ggplot(.) + geom_boxplot(aes(x = as.factor(Churn), y = NumServices)) + xlab("Churn") + ylab("Number of Services") + ggtitle("Churn by number of services purchased")
-
 ```
 
-
-##Models
-In this following section we are going to be generating models with the goal of predicting customer churn and better understanding the significant predictors. The first model we created was a logistic regression model. We wanted to create this initial model to help us understand if there were any insignificant variables that we should be removing from our models and also to get an idea of which predictors are stronger than others. We also optimized this model using a step.  
+## Models
+In this following section, we are going to be generating models with the goal of predicting customer churn and better understanding the significant predictors.  
 
 ### Logistic Regression Model
+The first model we created was a logistic regression model. This model uses a logistic function to model a binary respone variables based on explantory variables. We wanted to create this initial model to help us understand if there were any insignificant variables that we should be removing from our models and also to get an idea of which predictors are stronger than others. We also optimized this model using a backwards step wise function.
+
 ```{r}
 #First model
 c_train_labels_numeric <- ifelse(c_train_labels == "Yes", 1, 0)
@@ -176,33 +183,55 @@ prediction2 <- as.factor(ifelse(prediction > 0.5, 1, 0))
 glmmatrix <- confusionMatrix(prediction2, as.factor(c_test_labels_numeric))
 ```
 
+### kNN Model
+The second model built was a kNN model. The k-nearest neighbors algorithm returns class membership - in our case, churn - based upon the plurality vote of its neighbors.
 
-### KNN Model
 ```{r}
-
+#Creating kNN model
 knn1 <- knn(train = c_trainMatrix, test = c_testMatrix, cl = c_train_labelsMatrix, k = sqrt(nrow(c_trainMatrix)))
 
+#Creating cross table and confusion matrix for kNN model
 CrossTable(x = c_train_labelsMatrix, y = knn1, prop.chisq=FALSE)
-
 knnmatrix <- confusionMatrix(knn1, as.factor(c_test_labelsMatrix))
 ```
 
 ### ANN Model
+The third model built was an a ANN model. An artificial neural network is a modeling tool based off of biological neural networks. We attempted to improve this model by including hidden layers which perfrom nonlinear transformations of inputs as they enter the neural network. This second iteration, with the hidden layers, outpreformed the one without hidden layers in respect to accuracy, kappa coefficient, and sensitivity.
 ```{r}
+#Creating ANN model
 ann1 <- neuralnet(formula = c_train_labelsMatrix ~ . , data = c_trainMatrix)
 plot(ann1)
 
-ann_results <- compute(ann1, c_testMatrix)
-predicted_y <- ann_results$net.result
-predicted_y_dummy <- ifelse(predicted_y >= 0.5, 1, 0)
+#Computing ANN prediction values
+ann_results1 <- compute(ann1, c_testMatrix)
+predicted_y1 <- ann_results1$net.result
+predicted_y_dummy1 <- ifelse(predicted_y1 >= 0.5, 1, 0)
 
-CrossTable(x = c_train_labelsMatrix, y = predicted_y_dummy, 
+#Creating cross table and confusion matrix for ANN model
+CrossTable(x = c_train_labelsMatrix, y = predicted_y_dummy1, 
            prop.chisq=FALSE)
+annmatrix1 <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(predicted_y_dummy1))
 
-annmatrix <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(predicted_y_dummy))
+ann2 <- neuralnet(formula = c_train_labelsMatrix ~ . , data = c_trainMatrix, hidden = 5)
+plot(ann2)
+
+#Computing ANN prediction values
+ann_results2 <- compute(ann2, c_testMatrix)
+predicted_y2 <- ann_results2$net.result
+predicted_y_dummy2 <- ifelse(predicted_y2 >= 0.5, 1, 0)
+
+#Creating cross table and confusion matrix for ANN model
+CrossTable(x = c_train_labelsMatrix, y = predicted_y_dummy2, 
+           prop.chisq=FALSE)
+annmatrix2 <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(predicted_y_dummy2))
+
+annmatrix <- annmatrix2
+annmatrix
+annmatrix1
 ```
 
 ### SVM
+Additionally, an SVM model was built. Support Vector Machines are typically used to carry out general regression and classification. Multiple kernel functions (Polynomial, Laplacian, and Radial Basis) were used to determine which would yield the SVM model the best results. The Radial Basis kernel function resulted in the greatest accuracy, kappa coefficient, and specificity. As a result, we concluded that the Radial Basis kernel function yielded the best SVM model.
 ```{r}
 #Creating SVM model (polydot)
 svm_poly <- ksvm(c_train_labelsMatrix ~ ., data = c_trainMatrix,
@@ -236,9 +265,8 @@ svmmatrix <- svmmatrix_rbf
 ```
 
 ### Decision Tree
+Finally, a decision tree model was built. In this algorithm, a sequence of tests are done adaptively, in which the result from a previous test determines the test next performed. We attempted to improve this model by using significant variables from the logistic regression model; however, multiple R issues prevented us from doing so.
 ```{r}
-
-
 #Creating decision tree model
 mod1 <- C5.0(c_train_labels ~ ., data = c_train)
 plot(mod1)
@@ -267,6 +295,7 @@ treematrix
 ```
 
 ### Stacked Model
+We then combined the results from the all the models to build a stacked decision tree model. The results of this model would depends upon the outputs of the aforementioned models. To do this, we split the combined data into train and test data sets. Then a decision tree model was built upon the train data and tested upon the test data.
 
 ```{r}
 #Creating combining prediction vector
@@ -299,7 +328,31 @@ stackedmatrix <- confusionMatrix(stacked_test$Actual, dectreepred)
 stackedmatrix
 ```
 
+### Majority Voting Scheme Model
+In addition to the stacked decision tree model, we created a majority voting scheme model, as seen below.
+
+```{r}
+#Examining structure of stacked test data
+str(stacked)
+
+#Creating mmajority testing structure
+stacked$majority <- as.integer(stacked$GLM) + as.integer(stacked$KNN) + as.integer(stacked$ANN) +
+                    as.integer(stacked$TREE) + as.integer(stacked$SVM)
+
+#Conversion to churn or lack of churn
+stacked$majority <- ifelse(stacked$majority > 8, 1, 0)
+
+#Converting back to factorto ensure consistency
+stacked$majority <- as.factor(stacked$majority)
+
+#Creating confusion matrix for majority voting scheme model
+majoritymatrix <- confusionMatrix(stacked$Actual, stacked$majority)
+majoritymatrix
+```
+
+
 ### Comparing all models
+After creating all these models, we compiled data from the results of all to compare the models.
 
 ```{r}
 glmmatrix$overall
@@ -308,16 +361,17 @@ annmatrix$overall
 svmmatrix_rbf$overall
 treematrix$overall
 stackedmatrix$overall
+majoritymatrix$overall
 
-accuracies <- c(glmmatrix$overall[1], knnmatrix$overall[1], annmatrix$overall[1], svmmatrix_rbf$overall[1], treematrix$overall[1], stackedmatrix$overall[1])
+accuracies <- c(glmmatrix$overall[1], knnmatrix$overall[1], annmatrix$overall[1], svmmatrix_rbf$overall[1], treematrix$overall[1], stackedmatrix$overall[1], majoritymatrix$overall[1])
 
-kappas <- c(glmmatrix$overall[2], knnmatrix$overall[2], annmatrix$overall[2], svmmatrix_rbf$overall[2], treematrix$overall[2], stackedmatrix$overall[2])
+kappas <- c(glmmatrix$overall[2], knnmatrix$overall[2], annmatrix$overall[2], svmmatrix_rbf$overall[2], treematrix$overall[2], stackedmatrix$overall[2], majoritymatrix$overall[2])
 
-sensitivities <- c(glmmatrix$byClass[1], knnmatrix$byClass[1], annmatrix$byClass[1], svmmatrix_rbf$byClass[1], treematrix$byClass[1],stackedmatrix$byClass[1])
+sensitivities <- c(glmmatrix$byClass[1], knnmatrix$byClass[1], annmatrix$byClass[1], svmmatrix_rbf$byClass[1], treematrix$byClass[1],stackedmatrix$byClass[1], majoritymatrix$byClass[1])
 
-specificities <- c(glmmatrix$byClass[2], knnmatrix$byClass[2], annmatrix$byClass[2], svmmatrix_rbf$byClass[2], treematrix$byClass[2],stackedmatrix$byClass[2])
+specificities <- c(glmmatrix$byClass[2], knnmatrix$byClass[2], annmatrix$byClass[2], svmmatrix_rbf$byClass[2], treematrix$byClass[2],stackedmatrix$byClass[2], majoritymatrix$byClass[2])
 
-names <- c("GLM", "ANN", "KNN", "SVM", "TREE", "STACKED")
+names <- c("GLM", "ANN", "KNN", "SVM", "TREE", "STACKED", "MAJORITY")
 models <- data.frame(names, accuracies, kappas, sensitivities, specificities)
 
 models %>% arrange(as.numeric(accuracies)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(accuracies) * 100, fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,100) + geom_text(aes(label = paste(round(as.numeric(accuracies) * 100, 2), "%"), vjust = -0.5)) + ylab("Accuracy (%)") + xlab("Model") + ggtitle("Model Accuracies")
