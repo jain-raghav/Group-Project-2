@@ -14,7 +14,10 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(cache = TRUE)
 ```
+
 ## Introduction
 Telco is a legacy telecommunications provider offering products such as cable phone, and internet service to its customers. Telecommunications is a high margin industry marked by increasing consolidation, high customer lifetime value, and room for investment in customer retention. 
 
@@ -45,13 +48,13 @@ summary(cdata)
 
 We see there are 11 data points which are not complete - indicated by the 11 NA's in the Total Charges five number summary. As a result of this, we decided to remove the 11 rows with missing data. This should not affect results are there is a more than 7500 rows of data and only 11 out of those are being omitted.
 
-Additionally, we observed that there were far fewer positive outcomes (customer churned) than negative outcomes. To account for this we are going to upsample the data to make it more balanced. By upsamplsing, we are esstentially undergoing a process of expansion by producing an approximation of the sequence of samples that would have been obtained by sampling the data at a higher density of customers who did churn.  
+Additionally, we observed that there were far fewer positive outcomes (customer churned) than negative outcomes. To account for this we are going to upsample the data to make it more balanced. By sampling, we are essentially undergoing a process of expansion by producing an approximation of the sequence of samples that would have been obtained by sampling the data at a higher density of customers who did churn.  
 
-Moreover, certain variables, such as Cutomer ID and Class, are not predictive. Instead, these are just used to identify the various customers of the company. Therefore, these variables were removed as they should not be significant in our predictive models.
+Moreover, certain variables, such as Customer ID and Class, are not predictive. Instead, these are just used to identify the various customers of the company. Therefore, these variables were removed as they should not be significant in our predictive models.
 
 Furthermore, we see certain variables (Online Security, Online Backup, Device Protection, Tech Support, Streaming TV, Streaming Movies, and Multiple Lines) have three factor levels. However, these factors can just be limited to two levels as the factor levels provided are dependent upon other variables. We reduced the factor levels present in all of these variables.
 
-Finally, we created an additional variable: Number of Services. We believed that this would be a significant variable in our analysis. For example having too many or too few services could potentially lead to customers leaving their provider as they may believe the services to be a hinderance or unnecessary, respectively.
+Finally, we created an additional variable: Number of Services. We believed that this would be a significant variable in our analysis. For example having too many or too few services could potentially lead to customers leaving their provider as they may believe the services to be a hindrance or unnecessary, respectively.
 
 ### Data Cleaning & Management
 ```{r}
@@ -109,7 +112,7 @@ c_test_labelsMatrix <- cdataMatrix[test_set, "ChurnYes"]
 ```
 
 ## Data Visualization
-Before, making our models we wanted to look at some visualizations to better understand our data and perhaps identify certain variables which should be, or will be, significant in predicting churn. Using these graphs, we were able to see that customers are split relatively 50-50 based on gender and that about 2000 customers out of the 10000 were senior citizens. We were also able to get some additional information that you can see pictured on the graph. 
+Before, making our models we wanted to look at some visualizations to better understand our data and perhaps identify certain variables which should be, or will be, significant in predicting churn. For customer demographics, we observe that customers are split relatively 50-50 based on gender and that about 2000 customers out of the 10000 were senior citizens. As for services, the graphics reveal that phone and internet packages are the most popular. Customers with longer contracts tend to purchase more services. While most customers pay month-by-month, customers with longer contracts tend to have lower average monthly bills. Finally, when visualizing churn data, we can note that customers that leave Telco have a higher median average monthly bill, but purchase roughly the same number of services.
 
 ```{r}
 #Exploring Gender and Senior Citizens
@@ -159,7 +162,7 @@ cdata %>% ggplot(.) + geom_boxplot(aes(x = as.factor(Churn), y = NumServices)) +
 In this following section, we are going to be generating models with the goal of predicting customer churn and better understanding the significant predictors.  
 
 ### Logistic Regression Model
-The first model we created was a logistic regression model. This model uses a logistic function to model a binary respone variables based on explantory variables. We wanted to create this initial model to help us understand if there were any insignificant variables that we should be removing from our models and also to get an idea of which predictors are stronger than others. We also optimized this model using a backwards step wise function.
+The first model we created was a logistic regression model. This model uses a logistic function to model a binary response variables based on explanatory variables. We wanted to create this initial model to help us understand if there were any insignificant variables that we should be removing from our models and also to get an idea of which predictors are stronger than others. We also optimized this model using a backwards step wise function.
 
 ```{r}
 #First model
@@ -196,7 +199,8 @@ knnmatrix <- confusionMatrix(knn1, as.factor(c_test_labelsMatrix))
 ```
 
 ### ANN Model
-The third model built was an a ANN model. An artificial neural network is a modeling tool based off of biological neural networks. We attempted to improve this model by including hidden layers which perfrom nonlinear transformations of inputs as they enter the neural network. This second iteration, with the hidden layers, outpreformed the one without hidden layers in respect to accuracy, kappa coefficient, and sensitivity.
+The third model built was an a ANN model. An artificial neural network is a modeling tool based off of biological neural networks. We attempted to improve this model by including hidden layers which perform nonlinear transformations of inputs as they enter the neural network. This second iteration, with the hidden layers, outperformed the one without hidden layers in respect to accuracy, kappa coefficient, and sensitivity.
+
 ```{r}
 #Creating ANN model
 ann1 <- neuralnet(formula = c_train_labelsMatrix ~ . , data = c_trainMatrix)
@@ -212,7 +216,7 @@ CrossTable(x = c_train_labelsMatrix, y = predicted_y_dummy1,
            prop.chisq=FALSE)
 annmatrix1 <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(predicted_y_dummy1))
 
-ann2 <- neuralnet(formula = c_train_labelsMatrix ~ . , data = c_trainMatrix, hidden = 5)
+ann2 <- neuralnet(formula = c_train_labelsMatrix ~ . , data = c_trainMatrix, hidden = 3)
 plot(ann2)
 
 #Computing ANN prediction values
@@ -226,12 +230,11 @@ CrossTable(x = c_train_labelsMatrix, y = predicted_y_dummy2,
 annmatrix2 <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(predicted_y_dummy2))
 
 annmatrix <- annmatrix2
-annmatrix
-annmatrix1
 ```
 
 ### SVM
 Additionally, an SVM model was built. Support Vector Machines are typically used to carry out general regression and classification. Multiple kernel functions (Polynomial, Laplacian, and Radial Basis) were used to determine which would yield the SVM model the best results. The Radial Basis kernel function resulted in the greatest accuracy, kappa coefficient, and specificity. As a result, we concluded that the Radial Basis kernel function yielded the best SVM model.
+
 ```{r}
 #Creating SVM model (polydot)
 svm_poly <- ksvm(c_train_labelsMatrix ~ ., data = c_trainMatrix,
@@ -266,6 +269,7 @@ svmmatrix <- svmmatrix_rbf
 
 ### Decision Tree
 Finally, a decision tree model was built. In this algorithm, a sequence of tests are done adaptively, in which the result from a previous test determines the test next performed. We attempted to improve this model by using significant variables from the logistic regression model; however, multiple R issues prevented us from doing so.
+
 ```{r}
 #Creating decision tree model
 mod1 <- C5.0(c_train_labels ~ ., data = c_train)
@@ -285,7 +289,7 @@ treematrix <- confusionMatrix(as.factor(c_test_labels), treepred)
 #plot(mod2)
 #summary(mod2)
 
-#Creating predicition from the second decision tree model
+#Creating prediction from the second decision tree model
 #treepred2 <- predict(mod2, telcomatrix_jan)
 #treematrix2 <- confusionMatrix(as.factor(telcomatrix_jan$churn_yes), treepred2)
 
@@ -299,7 +303,7 @@ We then combined the results from the all the models to build a stacked decision
 
 ```{r}
 #Creating combining prediction vector
-stacked <- data.frame(c_test_labelsMatrix, prediction2, knn1, predicted_y_dummy, treepred, svmpred_rbf)
+stacked <- data.frame(c_test_labelsMatrix, prediction2, knn1, predicted_y_dummy2, treepred, svmpred_rbf)
 names(stacked) <- c("Actual", "GLM", "KNN", "ANN", "TREE", "SVM")
 
 #Manging data
@@ -335,14 +339,14 @@ In addition to the stacked decision tree model, we created a majority voting sch
 #Examining structure of stacked test data
 str(stacked)
 
-#Creating mmajority testing structure
+#Creating majority testing structure
 stacked$majority <- as.integer(stacked$GLM) + as.integer(stacked$KNN) + as.integer(stacked$ANN) +
                     as.integer(stacked$TREE) + as.integer(stacked$SVM)
 
 #Conversion to churn or lack of churn
 stacked$majority <- ifelse(stacked$majority > 8, 1, 0)
 
-#Converting back to factorto ensure consistency
+#Converting back to factor to ensure consistency
 stacked$majority <- as.factor(stacked$majority)
 
 #Creating confusion matrix for majority voting scheme model
@@ -389,6 +393,10 @@ modelsmelt %>% ggplot(aes(names, value)) + geom_bar(stat="identity", position = 
 modelsmelt %>% ggplot(aes(series, value)) + geom_bar(stat="identity", position = "dodge", aes(fill = names)) + ylim(0,1) + ggtitle("Model Comparison") + xlab("Metric") + ylab("Value") +  scale_fill_discrete(name = "Models") + scale_x_discrete(labels = c("Accuracy", "Kappa", "Sensitivity", "Specificity"))
 ```
 
-##Conclusion
+## Conclusion
 
+The models we created could be useful to the Telco company by predicting which current customers are most likely to churn, and thereby giving the firm an opportunity to target those customers with price promotions and/or incentives to stay.
 
+The next step of this analysis would be to get more information from the Telco provider regarding the cost of such a promotion and the total lifetime value of a customer, so that calculations can be done to determine how much revenue could be preserved. In sensitivit this step, they (true positive) and specificity (true negative) values of each model would be important to understanding costs. For example, if the cost of retaining a customer is just barely lower than retaining them, it would be important that no unneeded promotions are given out. In this case, a model with high sensitivity and specificity may be preferable to one with a high overall accuracy. 
+
+Once the model(s) are put into use, we expect Telco's churn numbers to go down, indicated by higher customer retention metrics (controling for things such as customers moving away, death, etc.). Since many models performed similarly, we recommend that the Telco company deploy multiple models on random subsets of customers, so that the models can be forward-tested for a bit to determine which truly performs the best in practice. 

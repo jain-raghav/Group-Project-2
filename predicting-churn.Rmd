@@ -1,0 +1,399 @@
+---
+title: "Preventing Churn at Telco"
+author: "Malik Abbasi, Raghav Jain, Himansu Vepamakula, Ari Bosse"
+date: "12/12/2021"
+output:
+  html_document:
+    theme: readable
+    highlight: tango
+    code_folding: show
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+## Introduction
+Telco is a legacy telecommunications provider offering products such as cable phone, and internet service to its customers. Telecommunications is a high margin industry marked by increasing consolidation, high customer lifetime value, and room for investment in customer retention. 
+
+Telco has hired us to examine factors impacting customer decision making with the goal of reducing churn, and in this report we will take a deeper dive into that. Our ultimate goal is to be able to accurately predict which customers will churn so we can target them with a promotion or incentive to keep their services.
+
+We are going to start by importing the data set and loading all libraries that we will be working with followed by cleaning the data so it is ready for analysis. 
+
+## Data Cleaning and Organization
+```{r}
+#Loading Libraries
+library(caret)
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+library(class)
+library(gmodels)
+library(neuralnet)
+library(kernlab)
+library("C50")
+
+#Loading in Dataset
+cdata <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv", stringsAsFactors = TRUE)
+
+#Generate Data Summaries
+str(cdata)
+summary(cdata)
+```
+
+We see there are 11 data points which are not complete - indicated by the 11 NA's in the Total Charges five number summary. As a result of this, we decided to remove the 11 rows with missing data. This should not affect results are there is a more than 7500 rows of data and only 11 out of those are being omitted.
+
+Additionally, we observed that there were far fewer positive outcomes (customer churned) than negative outcomes. To account for this we are going to upsample the data to make it more balanced. By sampling, we are essentially undergoing a process of expansion by producing an approximation of the sequence of samples that would have been obtained by sampling the data at a higher density of customers who did churn.  
+
+Moreover, certain variables, such as Customer ID and Class, are not predictive. Instead, these are just used to identify the various customers of the company. Therefore, these variables were removed as they should not be significant in our predictive models.
+
+Furthermore, we see certain variables (Online Security, Online Backup, Device Protection, Tech Support, Streaming TV, Streaming Movies, and Multiple Lines) have three factor levels. However, these factors can just be limited to two levels as the factor levels provided are dependent upon other variables. We reduced the factor levels present in all of these variables.
+
+Finally, we created an additional variable: Number of Services. We believed that this would be a significant variable in our analysis. For example having too many or too few services could potentially lead to customers leaving their provider as they may believe the services to be a hindrance or unnecessary, respectively.
+
+### Data Cleaning & Management
+```{r}
+#Removes rows with any NA values -- Should not affect results as there is a total of 7500+ rows of data and only 11 rows are removed
+cdata <- na.omit(cdata)
+
+#Upsample dataset to have equal observations for churn outcomes
+cdata <- upSample(cdata, as.factor(cdata$Churn))
+
+#Removing CustomerID from dataset as it is not predictive
+cdata$customerID <- NULL
+cdata$Class <- NULL
+
+#replace "no phone/internet service" with no to limit numbers of factors
+cdata$OnlineSecurity <- as.factor(ifelse(cdata$OnlineSecurity == "No internet service" | cdata$OnlineSecurity == "No", "No", "Yes"))
+cdata$OnlineBackup <- as.factor(ifelse(cdata$OnlineBackup == "No internet service" | cdata$OnlineBackup == "No", "No", "Yes"))
+cdata$DeviceProtection <- as.factor(ifelse(cdata$DeviceProtection == "No internet service" | cdata$DeviceProtection == "No", "No", "Yes"))
+cdata$TechSupport <- as.factor(ifelse(cdata$TechSupport == "No internet service" | cdata$TechSupport == "No", "No", "Yes"))
+cdata$StreamingTV <- as.factor(ifelse(cdata$StreamingTV == "No internet service" | cdata$StreamingTV == "No", "No", "Yes"))
+cdata$StreamingMovies <- as.factor(ifelse(cdata$StreamingMovies == "No internet service" | cdata$StreamingMovies == "No", "No", "Yes"))
+cdata$MultipleLines <- as.factor(ifelse(cdata$MultipleLines == "No phone service" | cdata$MultipleLines == "No", "No", "Yes"))
+
+#Creating new variable pertaining to total number of services
+cdata$NumServices <- as.numeric(cdata$PhoneService == "Yes") + as.numeric(cdata$MultipleLines == "Yes") + as.numeric(cdata$InternetService != "No") + as.numeric(cdata$OnlineSecurity == "Yes") + as.numeric(cdata$OnlineBackup == "Yes") + as.numeric(cdata$DeviceProtection == "Yes") + as.numeric(cdata$TechSupport == "Yes") + as.numeric(cdata$StreamingTV == "Yes") + as.numeric(cdata$StreamingMovies == "Yes")
+
+str(cdata)
+summary(cdata)
+
+cdataMatrix <- as.data.frame(model.matrix(~.-1,cdata))
+```
+
+## Dataset Training 
+In this next section, we are going to normalize our data as well as create training and test data sets. This process is necessary as these data sets will be used in numerous models that will be built during our analysis.
+
+```{r}
+#Normalize the data
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+cdataMatrix <- as.data.frame(lapply(cdataMatrix, normalize))
+
+#Creating test and train set
+set.seed(12345)
+test_set <- sample(1:nrow(cdata), round(nrow(cdata) / 2,0))
+c_train <- cdata[-test_set, -match("Churn",names(cdata))]
+c_test <- cdata[test_set, -match("Churn",names(cdata))]
+c_trainMatrix <- cdataMatrix[-test_set, -match("ChurnYes",names(cdataMatrix))]
+c_testMatrix <- cdataMatrix[test_set, -match("ChurnYes",names(cdataMatrix))]
+
+#Fixing labels for the response variable 
+c_train_labels <- cdata[-test_set, "Churn"]
+c_test_labels <- cdata[test_set, "Churn"]
+c_train_labelsMatrix <- cdataMatrix[-test_set, "ChurnYes"]
+c_test_labelsMatrix <- cdataMatrix[test_set, "ChurnYes"]
+```
+
+## Data Visualization
+Before, making our models we wanted to look at some visualizations to better understand our data and perhaps identify certain variables which should be, or will be, significant in predicting churn. For customer demographics, we observe that customers are split relatively 50-50 based on gender and that about 2000 customers out of the 10000 were senior citizens. As for services, the graphics reveal that phone and internet packages are the most popular. Customers with longer contracts tend to purchase more services. While most customers pay month-by-month, customers with longer contracts tend to have lower average monthly bills. Finally, when visualizing churn data, we can note that customers that leave Telco have a higher median average monthly bill, but purchase roughly the same number of services.
+
+```{r}
+#Exploring Gender and Senior Citizens
+cdata %>% ggplot(.) + geom_histogram(aes(x = gender, fill = gender), stat = "count") + ggtitle("Customer Genders") + xlab("Gender") + ylab("Count")
+
+cdata %>% group_by(Churn,gender) %>% summarise(count = n()) %>% ggplot(.) + geom_col(aes(x=Churn, y = count, fill = gender)) + xlab("Churn") + ylab("Count") 
+
+cdata %>% ggplot(.) + geom_histogram(aes(x=ifelse(as.factor(SeniorCitizen) == 1, "Yes", "No"), fill = gender),  stat = "count") + ggtitle("Senior Citizen Customers") + xlab("Senior Citizen Status") + ylab("Count")
+```
+
+```{r}
+#Exploring Tenure
+cdata %>% ggplot(.)  + geom_density(aes(tenure,group=gender, fill=gender, colour=gender), alpha=0.15) + ggtitle("Distribution of tenure per gender") + xlab("Tenure (in months)")
+
+cdata %>% ggplot(.) + geom_histogram(aes(x = tenure, fill = gender)) + ggtitle("Tenure length, filled by gender") + xlab("Tenure (in months)")
+
+cdata %>% ggplot(.) + geom_boxplot(aes(x = as.factor(SeniorCitizen), y = tenure, fill = gender)) + xlab("Senior Citizen Status") + ylab("Tenure (in months)")
+
+cdata %>% ggplot(.) + geom_boxplot(aes(x = Churn, y = tenure, fill= gender))
+
+#Exploring Contract Types
+cdata %>% ggplot(.) + geom_histogram(aes(x = Contract, fill = gender), stat = "count") + ggtitle("Contract types, filled by gender") + xlab("Contract Type") + ylab("Number of Customers")
+
+cdata %>% group_by(Contract) %>% summarise(avg = mean(MonthlyCharges)) %>% ggplot(.) + geom_col(aes(x=Contract, y = avg)) + xlab("Contract Type") + ylab("Average Monthly Charge") + ggtitle("Average Monthly cost per Contract")
+
+cdata %>% ggplot(.) + geom_boxplot(aes(x = Churn, y = MonthlyCharges, fill = gender)) + ggtitle("Churn by Monthly Charges")
+
+#Exploring Number of Services
+
+services <- c("Total", "Phone", "Multiple Phones", "Internet", "Online Security", "Online Backup", "Device Protection", "Tech Support", "Streaming TV", "Streaming Movies")
+
+counts <- c(nrow(cdata[,]), nrow(cdata[cdata$PhoneService == "Yes", ]), nrow(cdata[cdata$MultipleLines == "Yes", ]), nrow(cdata[cdata$InternetService != "No", ]),nrow(cdata[cdata$OnlineSecurity == "Yes", ]),nrow(cdata[cdata$OnlineBackup == "Yes", ]),nrow(cdata[cdata$DeviceProtection == "Yes", ]),nrow(cdata[cdata$TechSupport == "Yes", ]),nrow(cdata[cdata$StreamingTV == "Yes", ]),nrow(cdata[cdata$StreamingMovies == "Yes", ]))
+
+countserv <- data.frame(services, counts)
+countserv$services  <- with(countserv, reorder(services, -counts))
+
+countserv %>% ggplot(.) + geom_col(aes(x=services, y = counts, fill = services)) + xlab("Services") + ylab("Count of Purchasing Customers") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + ggtitle("Services Purchased")
+
+cdata %>% group_by(Contract) %>% summarise(avg = mean(NumServices)) %>% ggplot(.) + geom_col(aes(x=Contract, y = avg)) + xlab("Contract Type") + ylab("Average Number of Services") + ggtitle("Number of Services")
+
+cdata %>% group_by(NumServices) %>% summarise(avg = mean(MonthlyCharges)) %>% ggplot(.) + geom_col(aes(x=NumServices, y = avg)) + xlab("Number of Services") + ylab("Average Monthly Charge") 
+
+cdata %>% ggplot(.) + geom_boxplot(aes(x = as.factor(Churn), y = NumServices)) + xlab("Churn") + ylab("Number of Services") + ggtitle("Churn by number of services purchased")
+```
+
+## Models
+In this following section, we are going to be generating models with the goal of predicting customer churn and better understanding the significant predictors.  
+
+### Logistic Regression Model
+The first model we created was a logistic regression model. This model uses a logistic function to model a binary response variables based on explanatory variables. We wanted to create this initial model to help us understand if there were any insignificant variables that we should be removing from our models and also to get an idea of which predictors are stronger than others. We also optimized this model using a backwards step wise function.
+
+```{r}
+#First model
+c_train_labels_numeric <- ifelse(c_train_labels == "Yes", 1, 0)
+c_test_labels_numeric <- ifelse(c_test_labels == "Yes", 1, 0)
+
+glm1 <- glm(c_train_labels_numeric ~ ., data = c_train, family = binomial)
+summary(glm1)
+
+#Optimizing logistic regression
+glm2 <- step(glm1, direction = "backward")
+
+#Looking at model
+summary(glm2)
+
+#Predicting based off of model
+prediction <- predict(glm2, c_test, type = "response")
+prediction2 <- as.factor(ifelse(prediction > 0.5, 1, 0))
+
+#Creating confusion matrix
+glmmatrix <- confusionMatrix(prediction2, as.factor(c_test_labels_numeric))
+```
+
+### kNN Model
+The second model built was a kNN model. The k-nearest neighbors algorithm returns class membership - in our case, churn - based upon the plurality vote of its neighbors.
+
+```{r}
+#Creating kNN model
+knn1 <- knn(train = c_trainMatrix, test = c_testMatrix, cl = c_train_labelsMatrix, k = sqrt(nrow(c_trainMatrix)))
+
+#Creating cross table and confusion matrix for kNN model
+CrossTable(x = c_train_labelsMatrix, y = knn1, prop.chisq=FALSE)
+knnmatrix <- confusionMatrix(knn1, as.factor(c_test_labelsMatrix))
+```
+
+### ANN Model
+The third model built was an a ANN model. An artificial neural network is a modeling tool based off of biological neural networks. We attempted to improve this model by including hidden layers which perform nonlinear transformations of inputs as they enter the neural network. This second iteration, with the hidden layers, outperformed the one without hidden layers in respect to accuracy, kappa coefficient, and sensitivity.
+
+```{r}
+#Creating ANN model
+ann1 <- neuralnet(formula = c_train_labelsMatrix ~ . , data = c_trainMatrix)
+plot(ann1)
+
+#Computing ANN prediction values
+ann_results1 <- compute(ann1, c_testMatrix)
+predicted_y1 <- ann_results1$net.result
+predicted_y_dummy1 <- ifelse(predicted_y1 >= 0.5, 1, 0)
+
+#Creating cross table and confusion matrix for ANN model
+CrossTable(x = c_train_labelsMatrix, y = predicted_y_dummy1, 
+           prop.chisq=FALSE)
+annmatrix1 <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(predicted_y_dummy1))
+
+ann2 <- neuralnet(formula = c_train_labelsMatrix ~ . , data = c_trainMatrix, hidden = 5)
+plot(ann2)
+
+#Computing ANN prediction values
+ann_results2 <- compute(ann2, c_testMatrix)
+predicted_y2 <- ann_results2$net.result
+predicted_y_dummy2 <- ifelse(predicted_y2 >= 0.5, 1, 0)
+
+#Creating cross table and confusion matrix for ANN model
+CrossTable(x = c_train_labelsMatrix, y = predicted_y_dummy2, 
+           prop.chisq=FALSE)
+annmatrix2 <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(predicted_y_dummy2))
+
+annmatrix <- annmatrix2
+annmatrix
+annmatrix1
+```
+
+### SVM
+Additionally, an SVM model was built. Support Vector Machines are typically used to carry out general regression and classification. Multiple kernel functions (Polynomial, Laplacian, and Radial Basis) were used to determine which would yield the SVM model the best results. The Radial Basis kernel function resulted in the greatest accuracy, kappa coefficient, and specificity. As a result, we concluded that the Radial Basis kernel function yielded the best SVM model.
+
+```{r}
+#Creating SVM model (polydot)
+svm_poly <- ksvm(c_train_labelsMatrix ~ ., data = c_trainMatrix,
+                          kernel = "polydot")
+svmpred_poly <- predict(svm_poly, c_testMatrix)
+svmpred_poly <- ifelse(svmpred_poly >= 0.5, 1, 0)
+#Creating polydot confusion matrix
+svmmatrix_poly <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(svmpred_poly))
+
+#Creating SVM model (laplace)
+svm_laplace <- ksvm(c_train_labelsMatrix ~ ., data = c_trainMatrix,
+                          kernel = "laplacedot")
+svmpred_laplace <- predict(svm_laplace, c_testMatrix)
+svmpred_laplace <- ifelse(svmpred_laplace >= 0.5, 1, 0)
+#Creating laplace confusion matrix
+svmmatrix_laplace <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(svmpred_laplace))
+
+#Creating SVM model (rdfdot)
+svm_rbf <- ksvm(c_train_labelsMatrix ~ ., data = c_trainMatrix,
+                          kernel = "rbfdot")
+svmpred_rbf <- predict(svm_rbf, c_testMatrix)
+svmpred_rbf <- ifelse(svmpred_rbf >= 0.5, 1, 0)
+#Creating rdfdot confusion matrix
+svmmatrix_rbf <- confusionMatrix(as.factor(c_test_labelsMatrix), as.factor(svmpred_rbf))
+
+#Finding out which SVM model worked the best
+svmmatrix_poly
+svmmatrix_laplace
+svmmatrix_rbf
+svmmatrix <- svmmatrix_rbf
+```
+
+### Decision Tree
+Finally, a decision tree model was built. In this algorithm, a sequence of tests are done adaptively, in which the result from a previous test determines the test next performed. We attempted to improve this model by using significant variables from the logistic regression model; however, multiple R issues prevented us from doing so.
+
+```{r}
+#Creating decision tree model
+mod1 <- C5.0(c_train_labels ~ ., data = c_train)
+plot(mod1)
+summary(mod1)
+
+#Creating prediction from decision tree model
+treepred <- predict(mod1, c_test)
+treematrix <- confusionMatrix(as.factor(c_test_labels), treepred)
+
+#Creating second decision tree model
+#mod2 <- C5.0(c_train_labels ~ senior_citizen + dependents_yes + tenure +
+#                    multiple_lines_yes + internet_service_fiber_optic + internet_service_no +
+#                    online_security_yes + tech_support_yes + streaming_tv_yes + streaming_movies_yes +
+#                    contract_one_year + contract_two_year + paperless_billing_yes + 
+#                    payment_method_electronic_check + monthly_charges + total_charges, data = c_train)
+#plot(mod2)
+#summary(mod2)
+
+#Creating prediction from the second decision tree model
+#treepred2 <- predict(mod2, telcomatrix_jan)
+#treematrix2 <- confusionMatrix(as.factor(telcomatrix_jan$churn_yes), treepred2)
+
+#Finding out which decision tree matrix worked the best
+treematrix
+#treematrix2
+```
+
+### Stacked Model
+We then combined the results from the all the models to build a stacked decision tree model. The results of this model would depends upon the outputs of the aforementioned models. To do this, we split the combined data into train and test data sets. Then a decision tree model was built upon the train data and tested upon the test data.
+
+```{r}
+#Creating combining prediction vector
+stacked <- data.frame(c_test_labelsMatrix, prediction2, knn1, predicted_y_dummy2, treepred, svmpred_rbf)
+names(stacked) <- c("Actual", "GLM", "KNN", "ANN", "TREE", "SVM")
+
+#Manging data
+stacked$Actual <- as.factor(stacked$Actual)
+stacked$ANN <- as.factor(stacked$ANN)
+stacked$SVM <- as.factor(stacked$SVM)
+stacked$TREE <- as.factor(ifelse(stacked$TREE == "Yes", 1, 0))
+
+#Examining struture of dataframe
+str(stacked)
+
+#Creating test and train sets
+stacked_train <- stacked[1:nrow(stacked)*3/4, ]
+stacked_test  <- stacked[nrow(stacked)*3/4 + 1:nrow(stacked), ]
+
+#Creating decision tree on the train set
+dectree <- C5.0(Actual ~ ., data = stacked_train)
+plot(dectree)
+summary(dectree)
+
+#Predicting the test data
+dectreepred <- predict(dectree, stacked_test)
+stackedmatrix <- confusionMatrix(stacked_test$Actual, dectreepred)
+
+#Creating confusion matrix for stacked model
+stackedmatrix
+```
+
+### Majority Voting Scheme Model
+In addition to the stacked decision tree model, we created a majority voting scheme model, as seen below.
+
+```{r}
+#Examining structure of stacked test data
+str(stacked)
+
+#Creating majority testing structure
+stacked$majority <- as.integer(stacked$GLM) + as.integer(stacked$KNN) + as.integer(stacked$ANN) +
+                    as.integer(stacked$TREE) + as.integer(stacked$SVM)
+
+#Conversion to churn or lack of churn
+stacked$majority <- ifelse(stacked$majority > 8, 1, 0)
+
+#Converting back to factor to ensure consistency
+stacked$majority <- as.factor(stacked$majority)
+
+#Creating confusion matrix for majority voting scheme model
+majoritymatrix <- confusionMatrix(stacked$Actual, stacked$majority)
+majoritymatrix
+```
+
+
+### Comparing all models
+After creating all these models, we compiled data from the results of all to compare the models.
+
+```{r}
+glmmatrix$overall
+knnmatrix$overall
+annmatrix$overall
+svmmatrix_rbf$overall
+treematrix$overall
+stackedmatrix$overall
+majoritymatrix$overall
+
+accuracies <- c(glmmatrix$overall[1], knnmatrix$overall[1], annmatrix$overall[1], svmmatrix_rbf$overall[1], treematrix$overall[1], stackedmatrix$overall[1], majoritymatrix$overall[1])
+
+kappas <- c(glmmatrix$overall[2], knnmatrix$overall[2], annmatrix$overall[2], svmmatrix_rbf$overall[2], treematrix$overall[2], stackedmatrix$overall[2], majoritymatrix$overall[2])
+
+sensitivities <- c(glmmatrix$byClass[1], knnmatrix$byClass[1], annmatrix$byClass[1], svmmatrix_rbf$byClass[1], treematrix$byClass[1],stackedmatrix$byClass[1], majoritymatrix$byClass[1])
+
+specificities <- c(glmmatrix$byClass[2], knnmatrix$byClass[2], annmatrix$byClass[2], svmmatrix_rbf$byClass[2], treematrix$byClass[2],stackedmatrix$byClass[2], majoritymatrix$byClass[2])
+
+names <- c("GLM", "ANN", "KNN", "SVM", "TREE", "STACKED", "MAJORITY")
+models <- data.frame(names, accuracies, kappas, sensitivities, specificities)
+
+models %>% arrange(as.numeric(accuracies)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(accuracies) * 100, fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,100) + geom_text(aes(label = paste(round(as.numeric(accuracies) * 100, 2), "%"), vjust = -0.5)) + ylab("Accuracy (%)") + xlab("Model") + ggtitle("Model Accuracies")
+
+models %>% arrange(as.numeric(kappas)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(kappas), fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,1) + geom_text(aes(label = paste(round(as.numeric(kappas), 2)), vjust = -0.5)) + ylab("Kappa") + xlab("Model") + ggtitle("Model Kappa Values")
+
+models %>% arrange(as.numeric(sensitivities)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(sensitivities) * 100, fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,100) + geom_text(aes(label = paste(round(as.numeric(sensitivities) * 100, 2), "%"), vjust = -0.5)) + ylab("Sensitivity (%)") + xlab("Model") + ggtitle("Model Sensitivities")
+
+models %>% arrange(as.numeric(specificities)) %>% mutate(names=factor(names, levels=names)) %>% ggplot(aes(x = as.factor(names), y = as.numeric(specificities) * 100, fill = as.factor(names))) + geom_col(show.legend = FALSE) + ylim(0,100) + geom_text(aes(label = paste(round(as.numeric(specificities) * 100, 2), "%"), vjust = -0.5)) + ylab("Specificity (%)") + xlab("Model") + ggtitle("Model Specificities")
+
+modelsmelt <- melt(models ,  id.vars = 'names', variable.name = 'series')
+
+modelsmelt %>% ggplot(aes(names, value)) + geom_bar(stat="identity", position = "dodge", aes(fill = series)) + ylim(0,1) + ggtitle("Model Comparison") + xlab("Model") + ylab("Value") + scale_fill_discrete(name = "Metrics", labels = c("Accuracy", "Kappa", "Sensitivity", "Specificity"))
+
+modelsmelt %>% ggplot(aes(series, value)) + geom_bar(stat="identity", position = "dodge", aes(fill = names)) + ylim(0,1) + ggtitle("Model Comparison") + xlab("Metric") + ylab("Value") +  scale_fill_discrete(name = "Models") + scale_x_discrete(labels = c("Accuracy", "Kappa", "Sensitivity", "Specificity"))
+```
+
+## Conclusion
+
+
